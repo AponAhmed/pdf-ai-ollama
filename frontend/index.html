@@ -1,0 +1,88 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai From PDF</title>
+</head>
+
+<body class="flex items-center justify-center h-screen py-5 bg-gray-100">
+    <div class="flex max-w-6xl min-h-full w-full gap-4">
+
+        <div class="bg-white rounded-lg shadow-md w-full overflow-hidden flex flex-col">
+            <div class="h-24 px-6 py-4 bg-gradient-to-r from-sky-700 to-sky-900 relative">
+                <h2 class="text-xl text-white font-bold mb-4" id="apptitle">AI From PDF</h2>
+                <div class="flex absolute right-6 top-5 gap-2">
+                    <select class="px-2 bg-gray-300 bg-opacity-20 rounded-md text-white" id="ullama-data-model">
+                        <option>Select Model</option>
+                        <!-- Add model options dynamically here -->
+                    </select>
+                    <select class="px-2 bg-gray-300 bg-opacity-20 rounded-md text-white">
+                        <option>Select PDF</option>
+                    </select>
+                    <button type="button" title="File List" id="upload-pdf-file"
+                        class=" p-1 bg-white hover:bg-opacity-25 bg-opacity-10 rounded-full">
+
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 text-white" viewBox="0 0 512 512">
+                            <path
+                                d="M320 367.79h76c55 0 100-29.21 100-83.6s-53-81.47-96-83.6c-8.89-85.06-71-136.8-144-136.8-69 0-113.44 45.79-128 91.2-60 5.7-112 43.88-112 106.4s54 106.4 120 106.4h56"
+                                fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                stroke-width="32" />
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                stroke-width="32" d="M320 255.79l-64-64-64 64M256 448.21V207.79" />
+                        </svg>
+                    </button>
+                    <button type="button" title="File List" id="pdfListButton"
+                        class=" p-1 bg-white hover:bg-opacity-25 bg-opacity-10 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 text-white" viewBox="0 0 512 512">
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                stroke-width="32" d="M160 144h288M160 256h288M160 368h288" />
+                            <circle cx="80" cy="144" r="16" fill="none" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="32" />
+                            <circle cx="80" cy="256" r="16" fill="none" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="32" />
+                            <circle cx="80" cy="368" r="16" fill="none" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="32" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="chat-wrap"
+                class="p-4 mx-4 flex-grow flex flex-col  bg-gray-100 bg-opacity-50 -translate-y-8 rounded-xl backdrop-blur-md">
+                <!-- Chat message container -->
+                <div id="chat-container" class="space-y-4 max-h-96 flex-grow overflow-y-auto p-2">
+                    <!-- Messages will appear here -->
+                </div>
+
+                <!-- Input area for user query -->
+                <div class="flex mt-2 items-center relative">
+                    <textarea id="query-input" rows="2" class="border rounded-md text-gray-800 w-full p-2 pr-14"
+                        placeholder="Enter text here..."></textarea><br><br>
+                    <!-- Send Button -->
+                    <button id="send-button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 p-3 flex bg-gradient-to-r from-sky-700 to-sky-900 text-white  rounded-full hover:from-sky-800 hover:to-sky-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 512 512">
+                            <path
+                                d="M470.3 271.15L43.16 447.31a7.83 7.83 0 01-11.16-7V327a8 8 0 016.51-7.86l247.62-47c17.36-3.29 17.36-28.15 0-31.44l-247.63-47a8 8 0 01-6.5-7.85V72.59c0-5.74 5.88-10.26 11.16-8L470.3 241.76a16 16 0 010 29.39z"
+                                fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                stroke-width="32" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="file-list"
+                class="p-5 mx-6 bg-gray-100 bg-opacity-50 -translate-y-8 rounded backdrop-blur-md hidden">
+                <!-- File list will be appended here -->
+                <ul id="list-items" class="max-h-96 overflow-auto"></ul>
+            </div>
+        </div>
+        <div class="w-full p-10 bg-gray-200 border border-gray-300 rounded-md">PDF Viewer</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
