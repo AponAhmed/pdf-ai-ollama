@@ -6,27 +6,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ai From PDF</title>
+    <link href="/dist/style.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 </head>
 
-<body class="flex items-center justify-center h-screen py-5 bg-gray-100">
-    <div class="flex max-w-6xl min-h-full w-full gap-4">
+<body class="flex items-center justify-center h-screen py-5 bg-gray-100 transition-all duration-500 ease-in-out">
+    <div class="flex max-w-6xl min-h-full w-full gap-4 justify-center">
 
-        <div class="bg-white rounded-lg shadow-md w-full overflow-hidden flex flex-col">
-            <div class="h-24 px-6 py-4 bg-gradient-to-r from-sky-700 to-sky-900 relative">
-                <h2 class="text-xl text-white font-bold mb-4" id="apptitle">AI From PDF</h2>
-                <div class="flex absolute right-6 top-5 gap-2">
-                    <select class="px-2 bg-gray-300 bg-opacity-20 rounded-md text-white" title="Select AI Model"
-                        id="ullama-data-model">
+        <div class="bg-white rounded-lg max-w-2xl shadow-md w-full overflow-hidden flex flex-col">
+            <div class="px-6 py-4 bg-transparent relative flex justify-between items-center">
+                <h2 class="text-xl text-gray-700 font-normal" id="apptitle">AI From PDF</h2>
+                <div class="flex gap-2">
+                    <select class="px-2 max-w-32 bg-gray-400 bg-opacity-20 rounded-md text-gray-600"
+                        title="Select AI Model" id="ullama-data-model">
                         <option>Select Model</option>
                         <!-- Add model options dynamically here -->
                     </select>
-                    <select title="Select PDF" class="px-2 bg-gray-300 bg-opacity-20 rounded-md text-white">
-                        <option>Select PDF</option>
+                    <select id="selectPDF" title="Select PDF"
+                        class="px-2 max-w-32 bg-gray-400 bg-opacity-20 rounded-md text-gray-600">
+                        <option value="">Select PDF</option>
                     </select>
+                    <!-- Hidden file input to trigger file selection -->
+                    <input type="file" id="pdf-input" accept=".pdf" style="display: none;" />
                     <button type="button" title="Upload PDF File" id="upload-pdf-file"
-                        class=" p-1 bg-white hover:bg-opacity-25 bg-opacity-10 rounded-full">
+                        class=" p-1 bg-gray-400 hover:bg-opacity-25 bg-opacity-10 rounded-full">
 
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 text-white" viewBox="0 0 512 512">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 m-1 text-gray-600" viewBox="0 0 512 512">
                             <path
                                 d="M320 367.79h76c55 0 100-29.21 100-83.6s-53-81.47-96-83.6c-8.89-85.06-71-136.8-144-136.8-69 0-113.44 45.79-128 91.2-60 5.7-112 43.88-112 106.4s54 106.4 120 106.4h56"
                                 fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
@@ -36,8 +41,8 @@
                         </svg>
                     </button>
                     <button type="button" title="Uploaded File List" id="pdfListButton"
-                        class=" p-1 bg-white hover:bg-opacity-25 bg-opacity-10 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 text-white" viewBox="0 0 512 512">
+                        class=" p-1 bg-gray-400 hover:bg-opacity-25 bg-opacity-10 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 m-1 text-gray-600" viewBox="0 0 512 512">
                             <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                                 stroke-width="32" d="M160 144h288M160 256h288M160 368h288" />
                             <circle cx="80" cy="144" r="16" fill="none" stroke="currentColor" stroke-linecap="round"
@@ -52,9 +57,9 @@
             </div>
 
             <div id="chat-wrap"
-                class="p-4 mx-4 flex-grow flex flex-col  bg-gray-100 bg-opacity-50 -translate-y-8 rounded-xl backdrop-blur-md">
+                class="p-4 mx-4 mb-4 h-[calc(100vh-110px)] flex flex-col bg-gray-100 bg-opacity-50 rounded-xl backdrop-blur-md">
                 <!-- Chat message container -->
-                <div id="chat-container" class="space-y-4 max-h-96 flex-grow overflow-y-auto p-2">
+                <div id="chat-container" class="space-y-4  flex-grow overflow-y-auto p-2">
                     <!-- Messages will appear here -->
                 </div>
 
@@ -76,14 +81,42 @@
             </div>
 
             <div id="file-list"
-                class="p-5 mx-6 bg-gray-100 bg-opacity-50 -translate-y-8 rounded backdrop-blur-md hidden">
+                class="p-4 mx-4 mb-4 flex-grow flex flex-col  bg-white bg-opacity-50 rounded-xl backdrop-blur-md">
                 <!-- File list will be appended here -->
                 <ul id="list-items" class="max-h-96 overflow-auto"></ul>
             </div>
         </div>
-        <div class="w-full p-10 bg-gray-200 border border-gray-300 rounded-md">PDF Viewer Will be here </div>
+        <div id="pdfViewWrapper" class="w-full max-w-1/2 hidden bg-gray-200 border border-gray-300 rounded-md">
+            <div class="pdf-container relative p-5 h-full">
+                <div class="w-full h-[calc(100vh-75px)] overflow-hidden overflow-y-auto">
+                    <canvas class="max-w-full" id="pdf-canvas"></canvas>
+                </div>
+                <div class="controller flex items-center absolute bottom-1 left-1 gap-2">
+                    <div id="page-buttons" class="flex gap-1 items-center">
+                        <button id="prev-page" class="pager-btn" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4" viewBox="0 0 512 512">
+                                <path
+                                    d="M480 145.52v221c0 13.28-13 21.72-23.63 15.35L267.5 268.8c-9.24-5.53-9.24-20.07 0-25.6l188.87-113C467 123.8 480 132.24 480 145.52zM251.43 145.52v221c0 13.28-13 21.72-23.63 15.35L38.93 268.8c-9.24-5.53-9.24-20.07 0-25.6l188.87-113c10.64-6.4 23.63 2.04 23.63 15.32z"
+                                    fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="32" />
+                            </svg>
+                        </button>
+                        <input type="text" class="w-9 h-6 text-center rounded-sm bg-gray-200" value="--"
+                            id="currentPage">
+                        <button id="next-page" class="pager-btn" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4" viewBox="0 0 512 512">
+                                <path
+                                    d="M32 145.52v221c0 13.28 13 21.72 23.63 15.35l188.87-113c9.24-5.53 9.24-20.07 0-25.6l-188.87-113C45 123.8 32 132.24 32 145.52zM260.57 145.52v221c0 13.28 13 21.72 23.63 15.35l188.87-113c9.24-5.53 9.24-20.07 0-25.6l-188.87-113c-10.64-6.47-23.63 1.97-23.63 15.25z"
+                                    fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="32" />
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="readingPages" class="text-sm hidden">Reading pages, Please wait...</span>
+                </div>
+            </div>
+        </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
+    <!-- <script type="module" src="/src/main.js"></script> -->
+    <script type="module" src="/dist/script.min.js"></script>
 </body>
 
 </html>

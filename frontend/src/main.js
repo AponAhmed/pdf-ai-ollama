@@ -1,13 +1,153 @@
 import './styles.css'; // Adjust path if necessary
 
+
+
 const delSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 text-gray-800" viewBox="0 0 512 512"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M368 368L144 144M368 144L144 368"/></svg>`;
 const appTitle = document.getElementById('apptitle');
 
 const sendBtn = document.getElementById('send-button');
 const queryInput = document.getElementById('query-input'); // Assuming there's an input field
 const modelSelect = document.getElementById('ullama-data-model'); // select model there's an input field
-
+const selectPDF = document.getElementById('selectPDF');
 const chatContainer = document.getElementById('chat-container');
+const pdfViewWrapper = document.getElementById('pdfViewWrapper');
+
+//const NumberOfPage = 2; //How Many Pages of PDF data will use as Content
+
+let pdfDoc = null, currentPage = 1, extractedText;
+
+// Elements
+const pdfCanvas = document.getElementById('pdf-canvas');
+const prevPageButton = document.getElementById('prev-page');
+const nextPageButton = document.getElementById('next-page');
+const readingPages = document.getElementById('readingPages');
+const currentPageTxt = document.getElementById('currentPage');
+
+// Navigation buttons
+prevPageButton.addEventListener('click', () => goToPage(currentPage - 1));
+nextPageButton.addEventListener('click', () => goToPage(currentPage + 1));
+
+currentPageTxt.addEventListener('change', () => {
+    const pageNumber = parseInt(currentPageTxt.value, 10); // Convert to integer
+    if (!isNaN(pageNumber)) { // Check if it's a valid number
+        goToPage(pageNumber);
+    } else {
+        console.error("Invalid page number");
+    }
+});
+
+
+// Backend Base URL for PDF Files
+const PDF_BASE_URL = "http://localhost:3000/api/pdf/";
+
+// Function to Load and Render PDF
+async function previewPDF(pdfFile) {
+    const pdfUrl = `${PDF_BASE_URL}${pdfFile}`;
+    await loadPDFFromUrl(pdfUrl)
+}
+
+
+// Function to load and render the PDF
+async function loadPDFFromUrl(pdfUrl) {
+    try {
+        const response = await fetch(pdfUrl);
+        if (!response.ok) {
+            throw new Error('Failed to fetch PDF from URL');
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        queryInput.disabled = true;
+
+        const typedArray = new Uint8Array(arrayBuffer);
+        pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+
+        renderPage(currentPage);
+
+        console.log('Data Process Started');
+
+        extractTextFromAllPages(pdfDoc).then((data) => {
+            extractedText = JSON.stringify(data, null, 2); // Pretty format with 2 spaces
+            console.log('Data Process Complete');
+            readingPages.style.display = 'none';
+            queryInput.disabled = false;
+            //console.log(data);
+        });
+
+    } catch (error) {
+        console.error('Error loading PDF from URL:', error);
+    }
+}
+
+
+// Render the current page
+async function renderPage(pageNumber) {
+    currentPageTxt.value = pageNumber;
+    const page = await pdfDoc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1 });
+    pdfCanvas.height = viewport.height;
+    pdfCanvas.width = viewport.width;
+    const renderContext = {
+        canvasContext: pdfCanvas.getContext('2d'),
+        viewport: viewport
+    };
+    await page.render(renderContext).promise;
+
+    // Enable/Disable page navigation buttons
+    prevPageButton.disabled = currentPage === 1;
+    nextPageButton.disabled = currentPage === pdfDoc.numPages;
+}
+
+// Change page
+function goToPage(pageNumber) {
+    console.log(pageNumber);
+    if (pageNumber >= 1 && pageNumber <= pdfDoc.numPages) {
+        currentPage = pageNumber;
+        renderPage(currentPage);
+    }
+}
+
+// // Function to extract text from the current PDF page
+async function extractTextFromPDF() {
+    const page = await pdfDoc.getPage(currentPage);
+    const content = await page.getTextContent();
+    extractedText = content.items.map(item => item.str).join('');
+}
+
+async function extractTextFromAllPages(pdfDoc) {
+    readingPages.style.display = 'inline-block';
+    const totalPages = pdfDoc.numPages; // Get the total number of pages
+    const extractedText = []; // Array to store text from all pages
+
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+        // if (pageNumber > NumberOfPage) {
+        //     break; //
+        // }
+        readingPages.innerHTML = 'Reading page:' + pageNumber + ', Please wait...'
+        const page = await pdfDoc.getPage(pageNumber); // Get the page
+        const content = await page.getTextContent(); // Get the text content of the page
+        const pageText = content.items.map(item => item.str).join('')
+            .replace(/\u0000/g, '') // Remove all occurrences of \u0000 (null characters)
+            .replace(/\.{2,}/g, '.'); // Replace consecutive dots (.., . ., etc.) with a single dot
+
+        extractedText.push({ pageNumber, text: pageText }); // Store the page number and its text
+    }
+
+    return extractedText; // Return all extracted text
+}
+
+
+
+
+// Event Listener for the <select> Dropdown
+selectPDF.addEventListener("change", (event) => {
+    const selectedPDF = event.target.value;
+    if (selectedPDF) {
+        pdfViewWrapper.classList.remove("hidden");
+        previewPDF(selectedPDF);
+    } else {
+        alert("Please select a valid PDF.");
+    }
+});
 
 // Function to create a user message element
 function createUserMessage(message) {
@@ -82,7 +222,7 @@ loadModels();
 
 sendBtn.addEventListener('click', async () => {
     const query = queryInput.value;
-    queryInput.value="";
+    queryInput.value = "";
     if (!query.trim()) return; // Ignore empty queries
     const selectedModel = modelSelect.value;
     // Display the user's query as a message
@@ -101,7 +241,7 @@ sendBtn.addEventListener('click', async () => {
         const response = await fetch('/api/query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, model: selectedModel }),
+            body: JSON.stringify({ query, model: selectedModel, context: extractedText }),
         });
 
         if (!response.ok) {
@@ -137,14 +277,175 @@ sendBtn.addEventListener('click', async () => {
     }
 });
 
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectPDF = document.getElementById('selectPDF');
+    const uploadButton = document.getElementById('upload-pdf-file');
+    const pdfInput = document.getElementById('pdf-input'); // Hidden file input
+    const pdfListUrl = '/api/pdfs'; // Endpoint to fetch the list of PDFs
+    const chatWrap = document.getElementById('list-items');
+
+    // Trigger the hidden file input when the upload button is clicked
+    uploadButton.addEventListener('click', () => {
+        pdfInput.click(); // Opens the file dialog
+    });
+
+    // Handle file selection from the file input
+    pdfInput.addEventListener('change', () => {
+        const file = pdfInput.files[0];
+        if (file && file.type === 'application/pdf') {
+            // Upload the PDF file after selection
+            uploadPDF(file);
+        } else {
+            alert('Please select a valid PDF file.');
+        }
+    });
+
+    // Function to upload the selected PDF
+    async function uploadPDF(file) {
+        const formData = new FormData();
+        formData.append('pdf', file); // Attach the selected file to the form data
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            if (data.message === 'PDF file uploaded successfully') {
+                alert('PDF uploaded successfully!');
+
+                // Refresh the PDF list after upload
+                await fetchPDFList();
+
+                // Set the newly uploaded file as the selected item
+                selectPDF.value = data.file.originalname; // Select the newly uploaded file in the dropdown
+                previewPDF(selectPDF.value);
+            } else {
+                alert(data.message || 'Error uploading PDF');
+            }
+        } catch (error) {
+            console.error('Error uploading PDF:', error);
+            alert('Error uploading PDF');
+        }
+    }
+
+    // Function to fetch the list of PDFs and populate the dropdown (Async)
+    async function fetchPDFList() {
+        try {
+            const response = await fetch(pdfListUrl);
+            const pdfs = await response.json();
+
+            // Update the select dropdown
+            selectPDF.innerHTML = '<option value="">Select PDF</option>'; // Reset options
+            pdfs.forEach(pdf => {
+                const option = document.createElement('option');
+                option.value = pdf;
+                option.textContent = pdf;
+                selectPDF.appendChild(option);
+            });
+
+            // Populate the file list with delete buttons
+            chatWrap.innerHTML = ''; // Clear existing list items
+            pdfs.forEach(pdf => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('flex', 'justify-between', 'items-center', 'p-2', 'bg-gray-100', 'rounded-md', 'my-2');
+
+                const pdfName = document.createElement('span');
+                pdfName.classList.add('text-gray-800', 'font-semibold');
+                pdfName.textContent = pdf;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('text-red-500', 'hover:text-gray-500', 'px-2', 'rounded-full', 'border', 'border-gray-500', 'bg-white', 'text-xs');
+                deleteButton.innerHTML = delSvg;
+
+                // Add delete button event
+                deleteButton.addEventListener('click', () => deletePDF(pdf));
+
+                // Append the PDF name and delete button to the list item
+                listItem.appendChild(pdfName);
+                listItem.appendChild(deleteButton);
+
+                // Append the list item to the file list
+                chatWrap.appendChild(listItem);
+            });
+        } catch (error) {
+            console.error('Error fetching PDF list:', error);
+        }
+    }
+
+    // Function to delete a PDF file
+    async function deletePDF(pdf) {
+        if (confirm(`Are you sure you want to delete ${pdf}?`)) {
+            try {
+                const response = await fetch(`/api/delete/${pdf}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+
+                if (data.message === 'PDF deleted successfully') {
+                    alert('PDF deleted successfully!');
+                    fetchPDFList(); // Re-fetch the PDF list after deletion
+                } else {
+                    alert(data.message || 'Error deleting PDF');
+                }
+            } catch (error) {
+                console.error('Error deleting PDF:', error);
+                alert('Error deleting PDF');
+            }
+        }
+    }
+
+    // Fetch the PDF list when the page loads
+    fetchPDFList();
+});
+
+
 // Function to show the generated file list
 document.addEventListener('DOMContentLoaded', () => {
     const showListButton = document.getElementById('pdfListButton');
     const fileListSection = document.getElementById('file-list');
-    const fileListDiv = document.getElementById('list-items');
+    const chatWrap = document.getElementById('chat-wrap');
 
-    // Event listener for toggle button
+    // Initially hide the file list sections
+    fileListSection.classList.add('hidden');
+    //chatWrap.style.display = 'none';
+
+    // Event listener for the toggle button
     showListButton.addEventListener('click', () => {
-        console.log('File List toggle');
+        // Toggle the visibility of the file list sections
+        if (fileListSection.classList.contains('hidden')) {
+            fileListSection.classList.remove('hidden'); // Show the file list section
+            appTitle.innerHTML = "Uploaded Files";
+            modelSelect.classList.add('hidden');
+            selectPDF.classList.add('hidden');
+            pdfViewWrapper.classList.add('hidden');
+        } else {
+            fileListSection.classList.add('hidden'); // Show the file list section
+            appTitle.innerHTML = "AI From PDF";
+            modelSelect.classList.remove('hidden');
+            selectPDF.classList.remove('hidden');
+            pdfViewWrapper.classList.remove('hidden');
+        }
+
+        if (chatWrap.classList.contains('hidden')) {
+            chatWrap.classList.remove('hidden'); // Show the file list items
+            appTitle.innerHTML = "AI From PDF";
+            modelSelect.classList.remove('hidden');
+            selectPDF.classList.remove('hidden');
+            pdfViewWrapper.classList.remove('hidden');
+        } else {
+            chatWrap.classList.add('hidden'); // Hide the file list items
+            appTitle.innerHTML = "Uploaded  List";
+            modelSelect.classList.add('hidden');
+            selectPDF.classList.add('hidden');
+            pdfViewWrapper.classList.add('hidden');
+        }
+
+        if (selectPDF.value == null) {
+            pdfViewWrapper.classList.add('hidden');
+        }
     });
 });
+
