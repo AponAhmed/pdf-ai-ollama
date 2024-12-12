@@ -321,6 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Set the newly uploaded file as the selected item
                 selectPDF.value = data.file.originalname; // Select the newly uploaded file in the dropdown
+				if(pdfViewWrapper.classList.contains('hidden')){
+					pdfViewWrapper.classList.remove('hidden');
+				}
                 previewPDF(selectPDF.value);
             } else {
                 alert(data.message || 'Error uploading PDF');
